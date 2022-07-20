@@ -1,0 +1,62 @@
+import { inject, injectable } from "tsyringe";
+import { v4 as uuidV4 } from "uuid";
+import { resolve } from "path";
+
+import { IUsersRepository } from "@modules/accounts/repositories/IUsersRepository";
+
+import { AppError } from "@shared/errors/AppError";
+import { IUsersTokensRepository } from "@modules/accounts/repositories/IUsersTokensRepository";
+import { IDateProvider } from "@shared/container/providers/DateProvider/IDateProvider";
+import { IMailProvider } from "@shared/container/providers/MailProvider/IMailProvider";
+
+@injectable()
+class SendLoginMailUseCase {
+    constructor(
+        // sempre que houver esse inject ele lê qual repository quer, vai até o /shared/container, identifica o nome e pega o singleton desse repositório
+        @inject("UsersRepository")
+        private usersRepository: IUsersRepository,
+        @inject("UsersTokensRepository")
+        private usersTokensRepository: IUsersTokensRepository,
+        @inject("DayjsDateProvider")
+        private dateProvider: IDateProvider,
+        @inject("EtherealMailProvider")
+        private mailProvider: IMailProvider
+    ) { }
+
+    async execute(email: string): Promise<void> {
+        const user = await this.usersRepository.findByEmail(email);
+
+        const templatePath = resolve(__dirname, "..", "..", "views", "emails", "loginEmail.hbs");
+
+        if (!user) {
+            throw new AppError("User does not exist!");
+        }
+
+        // using refresh tokens just for internal control - no need to create a new table just for this
+        const token = uuidV4();
+
+        const expiration_date = this.dateProvider.addHours(3);
+
+        await this.usersTokensRepository.create({
+            refresh_token: token,
+            user_id: user.id,
+            expiration_date
+        });
+
+        const variables = {
+            name: user.name,
+            link: `http://${process.env.DB_HOST}:${process.env.CLIENT_PORT}${process.env.LOGIN_MAIL_URL}${token}`
+        };
+
+
+        await this.mailProvider.sendMail(
+            email,
+            "Link para Login",
+            variables,
+            templatePath,
+        );
+
+    }
+}
+
+export { SendLoginMailUseCase }

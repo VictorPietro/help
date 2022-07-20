@@ -1,39 +1,40 @@
-import { isAfter, isBefore, isToday } from "date-fns";
+import moment from "moment";
 
-const areDatesInRange = (dateStart?: Date, dateEnd?: Date) => {
-    if (!dateStart || !dateEnd) {
-        // console.log('TRUE: all null')
-        return true;
-    }
-
-    dateStart = new Date(dateStart);
-    dateEnd = new Date(dateEnd);
-
-    const isStartToday = isToday(dateStart);
-    const isEndToday = isToday(dateEnd);
-
-    // if it starts or ends today, it will always be in range
-    if (isStartToday || isEndToday) {
-        // console.log('TRUE: starts or ends today')
-        return true;
-    }
-
-    const today = new Date();
-
-    // isAfter can't be true
-    const isStartAfterToday = isAfter(dateStart, today);
-
-    // isBefore can't be true
-    const isEndBeforeToday = isBefore(dateEnd, today);
-
-    // is it doesn't start after today and doesn't end before today
-    if (!isStartAfterToday && !isEndBeforeToday) {
-        // console.log('TRUE: starts before today and ends after today')
-        return true;
-    }
-
-    // console.log('FALSE: none')
-    return false;
+function addDays(date, number) {
+    const newDate = new Date(date);
+    return new Date(newDate.setDate(date.getDate() + number));
 }
 
-export { areDatesInRange };
+function addMonths(date, number) {
+    const newDate = new Date(date);
+    return new Date(newDate.setMonth(newDate.getMonth() + number));
+}
+
+function addYears(date, number) {
+    const newDate = new Date(date);
+    return new Date(newDate.setFullYear(newDate.getFullYear() + number));
+}
+
+const calculateBusinessDaysInterval = (start, end) => {
+    start = moment(start);
+    start = start.utc().add(start.utcOffset(), 'm'); // Ignore timezones
+
+    end = moment(end);
+    end = end.utc().add(end.utcOffset(), 'm'); // Ignore timezones
+
+    var first = start.clone().endOf('week'); // end of first week
+    var last = end.clone().startOf('week'); // start of last week
+
+    // Fixing Summer Time problems
+    var firstCorrection = moment(first).utc().add(60, 'm').toDate(); //
+    var days = last.diff(firstCorrection, 'days') * 5 / 7; // this will always multiply of 7
+
+    var wfirst = first.day() - start.day(); // check first week
+    if (start.day() == 0) --wfirst; // -1 if start with sunday
+    var wlast = end.day() - last.day(); // check last week
+    if (end.day() == 6) --wlast; // -1 if end with saturday
+
+    return wfirst + days + wlast; // get the total (subtract holidays if needed)
+};
+
+export { calculateBusinessDaysInterval, addDays, addMonths, addYears };
