@@ -1,6 +1,4 @@
 import { SocketProvider } from '@shared/container/providers/SocketProvider/implementations/SocketProvider';
-import { FetchSubscribedTickers } from '@utils/optionsHandler';
-import { sliceIntoChunks } from '@utils/stringsHandler';
 import net from 'net';
 import { container } from "tsyringe";
 
